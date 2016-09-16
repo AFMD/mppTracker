@@ -6,7 +6,7 @@
 import visa # for talking to sourcemeter
 import sys
 import argparse
-parser = argparse.ArgumentParser(description='Perovskite max power point tracker using a Keityhley2400')
+parser = argparse.ArgumentParser(description='Max power point tracker for solar cells using a Keityhley 2400 sourcemeter (hopefully robust enough for perovskites)')
 
 parser.add_argument("address", help="VISA resource name for sourcemeter")
 parser.add_argument("duration", type=int, help="Total number of seconds to run for (0=forever)")
