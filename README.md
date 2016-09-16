@@ -5,7 +5,8 @@ python max power point tracker for solar cells (hopefully robust enough for pero
 ```
 usage: mppTracker.py [-h] [-v VOLTAGE] address duration
 
-Max power point tracker for solar cells using a Keityhley 2400 sourcemeter (hopefully robust enough for perovskites) 
+Max power point tracker for solar cells using a Keityhley 2400 sourcemeter
+(hopefully robust enough for perovskites)
 
 positional arguments:
   address               VISA resource name for sourcemeter
