@@ -29,9 +29,9 @@ except:
     except:
         exctype, value2 = sys.exc_info()[:2]
         print('Unable to connect to instrument.')
-        print('Error 1:')
+        print('Error 1 (using pyvisa-py backend):')
         print(value1)
-        print('Error 2:')
+        print('Error 2 (using pyvisa default backend):')
         print(value2)
         try:
             sm.close()
@@ -51,6 +51,7 @@ except:
         sm.close()
     except:
         pass
+    sys.exit(-2)
 print("Sourcemeter found:")
 print(idnString)
 if args.duration == 0:
