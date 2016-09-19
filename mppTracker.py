@@ -7,6 +7,7 @@ import visa # for talking to sourcemeter
 import sys
 import argparse
 import time
+import numpy
 parser = argparse.ArgumentParser(description='Max power point tracker for solar cells using a Keityhley 2400 sourcemeter (hopefully robust enough for perovskites)')
 
 parser.add_argument("address", help="VISA resource name for sourcemeter")
@@ -15,52 +16,56 @@ parser.add_argument("-v", "--voltage", type=float, help="A guess at what the max
 
 args = parser.parse_args()
 
-openParams = {'resource_name': args.address, 'timeout': 10, '_read_termination': u'\n'}
+timeoutMS = 10000
+openParams = {'resource_name': args.address, 'timeout': timeoutMS, '_read_termination': u'\n'}
 
-print("Connecting to", openParams['resource_name'], "...")
+print("Connecting to", openParams['resource_name'], "...", file=sys.stderr, flush=True)
+connectedVia = None
 try:
     rm = visa.ResourceManager('@py') # first try native python pyvisa-py backend
     sm = rm.open_resource(**openParams)
+    connectedVia = 'pyvisa-py'
 except:
     exctype, value1 = sys.exc_info()[:2]
     try:
         rm = visa.ResourceManager()
         sm = rm.open_resource(**openParams)
+        connectedVia = 'pyvisa-default'
     except:
         exctype, value2 = sys.exc_info()[:2]
-        print('Unable to connect to instrument.')
-        print('Error 1 (using pyvisa-py backend):')
-        print(value1)
-        print('Error 2 (using pyvisa default backend):')
-        print(value2)
+        print('Unable to connect to instrument.', file=sys.stderr, flush=True)
+        print('Error 1 (using pyvisa-py backend):', file=sys.stderr, flush=True)
+        print(value1, file=sys.stderr, flush=True)
+        print('Error 2 (using pyvisa default backend):', file=sys.stderr, flush=True)
+        print(value2, file=sys.stderr, flush=True)
         try:
             sm.close()
         except:
             pass
         sys.exit(-1)
-print("Connection established.")
-print("Querying device type...")
+print("Connection established.", file=sys.stderr, flush=True)
+print("Querying device type...", file=sys.stderr, flush=True)
 try:
     # ask the device to identify its self
     idnString = sm.query("*IDN?")
 except:
-    print('Unable perform "*IDN?" query.')
+    print('Unable perform "*IDN?" query.', file=sys.stderr, flush=True)
     exctype, value = sys.exc_info()[:2]
-    print(value)
+    print(value, file=sys.stderr, flush=True)
     try:
         sm.close()
     except:
         pass
     sys.exit(-2)
-print("Sourcemeter found:")
-print(idnString)
+print("Sourcemeter found:", file=sys.stderr, flush=True)
+print(idnString, file=sys.stderr, flush=True)
 if args.duration == 0:
     timeString = "forever."
 else:
     timeString = "for " + str(args.duration) + " seconds."
-print("mppTracking",timeString)
+print("mppTracking",timeString, file=sys.stderr, flush=True)
 if args.voltage:
-    print("Starting at ", args.voltage, " volts.")
+    print("Starting at ", args.voltage, " volts.", file=sys.stderr, flush=True)
 
 sm.write('*RST')
 sm.write(':trace:clear')
@@ -76,7 +81,6 @@ sm.write(':format:elements time,voltage,current,status')
 sm.write(':source:function current')
 sm.write(':source:current:mode fixed')
 sm.write(':source:current:range min')
-sm.write(':sense:current:range min')
 sm.write(':source:current 0')
 sm.write(':sense:voltage:protection 10')
 sm.write(':sense:voltage:range 10')
@@ -85,45 +89,80 @@ sm.write(':sense:voltage:nplcycles 10')
 sm.write(':sense:current:nplcycles 10')
 sm.write(':display:digits 7')
 sm.write(':output on')
-time.sleep(10) # let's let things chill here for 10 seconds
+exploring = 1
+time.sleep(10) # let's let things chill (lightsoak?) here for 10 seconds
 
 # read OCV
-[t0, Voc, Ioc, status] = sm.query_ascii_values('READ?')
+[Voc, Ioc, t0, status] = sm.query_ascii_values('READ?')
 sm.write(':output off')
+print('#exploring,time,voltage,current', file=sys.stderr, flush=True)
+print('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,0,Voc,Ioc), flush=True)
 
 # for initial sweep
 ##NOTE: what if Isc degrades the device? maybe I should only sweep backwards
 ##until the power output starts dropping instead of going all the way to zero volts...
-sweepParams['maxCurrent'] = 0.01 # amps
+sweepParams = {} # here we'll store the parameters that define our sweep
+sweepParams['maxCurrent'] = 0.001 # amps
 sweepParams['sweepStart'] = Voc # volts
 sweepParams['sweepEnd'] = 0 # volts
-sweepParams['nPoints'] = 10001
+sweepParams['nPoints'] = 1001
 sweepParams['stepDelay'] = 0 # seconds (-1 for auto, nearly zero, delay)
 
+sm.write(':source:function voltage')
 sm.write(':source:voltage:mode sweep')
 sm.write(':source:sweep:spacing linear')
-sm.write(':source:delay {0:0.3f}'.format(dt))
+sm.write(':source:delay {0:0.3f}'.format(sweepParams['stepDelay']))
 sm.write(':trigger:count {0:d}'.format(int(sweepParams['nPoints'])))
 sm.write(':source:sweep:points {0:d}'.format(int(sweepParams['nPoints'])))
-sm.write(':source:voltage:start {0:.3f}'.format(sweepParams['sweepStart']))
-sm.write(':source:voltage:stop {0:.3f}'.format(sweepParams['sweepEnd']))
+sm.write(':source:voltage:start {0:.4f}'.format(sweepParams['sweepStart']))
+sm.write(':source:voltage:stop {0:.4f}'.format(sweepParams['sweepEnd']))
 
+sm.write(':source:voltage:range {0:.4f}'.format(sweepParams['sweepStart']))
 sm.write(':source:sweep:ranging best')
-sm.write(':sense:voltage:range {0:.3f}'.format(sweepParams['sweepStart']))
 sm.write(':sense:current:protection {0:.3f}'.format(sweepParams['maxCurrent']))
 sm.write(':sense:current:range {0:.3f}'.format(sweepParams['maxCurrent']))
-sm.write(':sense:voltage:nplcycles 1')
-sm.write(':sense:current:nplcycles 1')
-sm.write(':display:digits 6')
+sm.write(':sense:voltage:nplcycles 0.1')
+sm.write(':sense:current:nplcycles 0.1')
+sm.write(':display:digits 5')
 
+sm.write(':source:voltage {0:0.4f}'.format(sweepParams['sweepStart']))
 sm.write(':output on')
-
-#TODO: test what the voltage on the output terminals is right here
-#NOTE: i'd like it to be Voc
 
 sweepValues = sm.query_ascii_values('read?')
 sm.write(':output off')
 
-print("The values are")
-print(sweepValues)
+sweepValues = numpy.reshape(sweepValues, (-1,4))
+
+for x in range(len(sweepValues)):
+    v = sweepValues[x,0]
+    i = sweepValues[x,1]
+    t = sweepValues[x,2] - t0
+    print('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t,v,i), flush=True)
+v = sweepValues[:,0]
+i = sweepValues[:,1]
+p = v*i*-1
+maxIndex = numpy.argmax(p)
+Vmpp = v[maxIndex]
+
+sm.write(':source:voltage {0:0.4f}'.format(Vmpp))
+sm.write(':output on')
+sm.write(':source:voltage:mode fixed')
+sm.write(':trigger:count 1')
+
+t_dwell = args.duration # [s]
+exploring = 0
+# dwell at Vmpp while measuring
+tic = time.time()
+toc =  time.time() - tic
+while toc < t_dwell:
+    [v, i, tx, status] = sm.query_ascii_values('READ?')
+    print('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,tx-t0,v,i), flush=True)    
+    toc = time.time() - tic
+    
+exploring = 1
+
+# setup complete. the real mppTracker begins here
+
+sm.write('*RST')
 sm.close()
+sys.exit(0) # TODO: check all the status values and immediately exit -3 if something is not right
