@@ -11,7 +11,7 @@ import numpy
 parser = argparse.ArgumentParser(description='Max power point tracker for solar cells using a Keityhley 2400 sourcemeter (hopefully robust enough for perovskites)')
 
 parser.add_argument("address", help="VISA resource name for sourcemeter")
-parser.add_argument("t_dwell", type=int, help="Total number of seconds for the dwell phases")
+parser.add_argument("t_dwell", type=int, help="Total number of seconds for the dwell phase(s)")
 parser.add_argument("t_total", type=int, help="Total number of seconds to run for")
 
 args = parser.parse_args()
