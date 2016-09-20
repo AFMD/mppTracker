@@ -3,19 +3,18 @@ python max power point tracker for solar cells (hopefully robust enough for pero
 
 ## Usage
 ```
-usage: mppTracker.py [-h] [-v VOLTAGE] address duration
+usage: mppTracker.py [-h] address t_dwell t_total
 
 Max power point tracker for solar cells using a Keityhley 2400 sourcemeter
 (hopefully robust enough for perovskites)
 
 positional arguments:
-  address               VISA resource name for sourcemeter
-  duration              Total number of seconds to run for (0=forever)
+  address     VISA resource name for sourcemeter
+  t_dwell     Total number of seconds for the dwell phase(s)
+  t_total     Total number of seconds to run for
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -v VOLTAGE, --voltage VOLTAGE
-                        A guess at what the max power point voltage is
+  -h, --help  show this help message and exit
 ```
 
 ## Requirements
