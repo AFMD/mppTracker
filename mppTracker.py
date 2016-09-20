@@ -59,13 +59,14 @@ except:
     sys.exit(-2)
 print("Sourcemeter found:", file=sys.stderr, flush=True)
 print(idnString, file=sys.stderr, flush=True)
-if args.duration == 0:
-    timeString = "forever."
+if args.t_total == 0:
+    timeString = "forever"
 else:
-    timeString = "for " + str(args.duration) + " seconds."
-print("mppTracking",timeString, file=sys.stderr, flush=True)
-if args.voltage:
-    print("Starting at ", args.voltage, " volts.", file=sys.stderr, flush=True)
+    timeString = "for " + str(args.t_total) + " seconds"
+print("mppTracking",timeString, "with", str(args.t_dwell), "second dwell intervals.", file=sys.stderr, flush=True)
+
+# connection polarity
+polarity = -1
 
 sm.write('*RST')
 sm.write(':trace:clear')
@@ -96,13 +97,13 @@ time.sleep(10) # let's let things chill (lightsoak?) here for 10 seconds
 [Voc, Ioc, t0, status] = sm.query_ascii_values('READ?')
 sm.write(':output off')
 print('#exploring,time,voltage,current', file=sys.stderr, flush=True)
-print('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,0,Voc,Ioc), flush=True)
+print('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,0,Voc,Ioc*polarity), flush=True)
 
 # for initial sweep
 ##NOTE: what if Isc degrades the device? maybe I should only sweep backwards
 ##until the power output starts dropping instead of going all the way to zero volts...
 sweepParams = {} # here we'll store the parameters that define our sweep
-sweepParams['maxCurrent'] = 0.001 # amps
+sweepParams['maxCurrent'] = 0.0001 # amps
 sweepParams['sweepStart'] = Voc # volts
 sweepParams['sweepEnd'] = 0 # volts
 sweepParams['nPoints'] = 1001
@@ -116,6 +117,7 @@ sm.write(':trigger:count {0:d}'.format(int(sweepParams['nPoints'])))
 sm.write(':source:sweep:points {0:d}'.format(int(sweepParams['nPoints'])))
 sm.write(':source:voltage:start {0:.4f}'.format(sweepParams['sweepStart']))
 sm.write(':source:voltage:stop {0:.4f}'.format(sweepParams['sweepEnd']))
+dV = abs(sm.query_ascii_values(':source:voltage:step?')[0])
 
 sm.write(':source:voltage:range {0:.4f}'.format(sweepParams['sweepStart']))
 sm.write(':source:sweep:ranging best')
@@ -129,32 +131,44 @@ sm.write(':source:voltage {0:0.4f}'.format(sweepParams['sweepStart']))
 sm.write(':output on')
 
 sweepValues = sm.query_ascii_values('read?')
-sm.write(':output off')
+#sm.write(':output off')
 
 sweepValues = numpy.reshape(sweepValues, (-1,4))
 
 for x in range(len(sweepValues)):
     v = sweepValues[x,0]
-    i = sweepValues[x,1]
+    i = sweepValues[x,1] * polarity
     t = sweepValues[x,2] - t0
     print('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t,v,i), flush=True)
 v = sweepValues[:,0]
-i = sweepValues[:,1]
-p = v*i*-1
+i = sweepValues[:,1] * polarity
+Isc = i[-1]
+p = v*i
 maxIndex = numpy.argmax(p)
 Vmpp = v[maxIndex]
 
-sm.write(':source:voltage {0:0.4f}'.format(Vmpp))
-sm.write(':output on')
+v_set = 0
 sm.write(':source:voltage:mode fixed')
 sm.write(':trigger:count 1')
+while v_set < Vmpp:
+        sm.write(':source:voltage {0:0.4f}'.format(v_set))
+        [v, i, tx, status] = sm.query_ascii_values('READ?')
+        i = i*polarity
+        t_run = tx-t0
+        print('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t_run,v,i), flush=True)
+        v_set = v_set + dV
 
-# what dV are we using?
-dV = sm.query_ascii_values(':source:voltage:step?')
+sm.write(':source:voltage {0:0.4f}'.format(Vmpp))
+
+def weAreDone(sm):
+    sm.write('*RST')
+    sm.close()
+    sys.exit(0) # TODO: should check all the status values and immediately exit -3 if something is not right
+
+# setup complete. the real mppTracker begins here
 
 # for curve exploration
-dAngleMax = 10 #[degrees] (plus and minus)
-dAngleMax = np.deg2rad(dAngleMax)
+dAngleMax = 25 #[degrees] (plus and minus)
 
 while True:
     exploring = 0
@@ -163,54 +177,53 @@ while True:
     toc =  time.time() - tic
     while toc < args.t_dwell:
         [v, i, tx, status] = sm.query_ascii_values('READ?')
+        i = i*polarity
         t_run = tx-t0
         print('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t_run,v,i), flush=True)
         if t_run > args.t_total:
             weAreDone(sm)
         toc = time.time() - tic
-        
-    # setup complete. the real mppTracker begins here
+
     exploring = 1
-    i_explore = [i]
-    v_explore = [v]
+    i_explore = numpy.array(i)
+    v_explore = numpy.array(v)
     
     dAngle = 0
-    angleMpp = numpy.tan(i/v)
+    angleMpp = numpy.rad2deg(numpy.tan(i/v*Voc/Isc))
     v_set = Vmpp
     switched = False
     while dAngle < dAngleMax:
         v_set = v_set + dV
         sm.write(':source:voltage {0:0.4f}'.format(v_set))
         [v, i, tx, status] = sm.query_ascii_values('READ?')
+        i = i*polarity
         t_run = tx-t0
         print('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t_run,v,i), flush=True)
         if t_run > args.t_total:
             weAreDone(sm)
-        i_explore.append(i)
-        v_explore.append(v)
-        dAngle = numpy.tan(i/v) - angleMpp
+        i_explore = numpy.append(i_explore, i)
+        v_explore = numpy.append(v_explore, v)
+        dAngle = numpy.rad2deg(numpy.tan(i/v*Voc/Isc)) - angleMpp
         if (dAngle < -dAngleMax) and not switched:
             switched = True
             dV = dV * -1 # switch our voltage walking direction (only once)
     
     # find the powers for the values we just explored
-    p_explore = v_explore*i_explore*-1
+    p_explore = v_explore*i_explore
     maxIndex = numpy.argmax(p_explore)
     Vmpp = v_explore[maxIndex]
     
     # now let's walk back to our new Vmpp
     dV = dV * -1
+    v_set = v_set + dV
     while v_set < Vmpp:
-        v_set = v_set + dV
         sm.write(':source:voltage {0:0.4f}'.format(v_set))
         [v, i, tx, status] = sm.query_ascii_values('READ?')
+        i = i*polarity
         t_run = tx-t0
         print('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t_run,v,i), flush=True)
         if t_run > args.t_total:
             weAreDone(sm)
+        v_set = v_set + dV
     sm.write(':source:voltage {0:0.4f}'.format(Vmpp))
 
-def weAreDone(sm):
-    sm.write('*RST')
-    sm.close()
-    sys.exit(0) # TODO: should check all the status values and immediately exit -3 if something is not right
