@@ -11,8 +11,8 @@ import numpy
 parser = argparse.ArgumentParser(description='Max power point tracker for solar cells using a Keityhley 2400 sourcemeter (hopefully robust enough for perovskites)')
 
 parser.add_argument("address", help="VISA resource name for sourcemeter")
-parser.add_argument("duration", type=int, help="Total number of seconds to run for (0=forever)")
-parser.add_argument("-v", "--voltage", type=float, help="A guess at what the max power point voltage is")
+parser.add_argument("t_dwell", type=int, help="Total number of seconds for the dwell phases")
+parser.add_argument("t_total", type=int, help="Total number of seconds to run for")
 
 args = parser.parse_args()
 
@@ -149,20 +149,68 @@ sm.write(':output on')
 sm.write(':source:voltage:mode fixed')
 sm.write(':trigger:count 1')
 
-t_dwell = args.duration # [s]
-exploring = 0
-# dwell at Vmpp while measuring
-tic = time.time()
-toc =  time.time() - tic
-while toc < t_dwell:
-    [v, i, tx, status] = sm.query_ascii_values('READ?')
-    print('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,tx-t0,v,i), flush=True)    
-    toc = time.time() - tic
+# what dV are we using?
+dV = sm.query_ascii_values(':source:voltage:step?')
+
+# for curve exploration
+dAngleMax = 10 #[degrees] (plus and minus)
+dAngleMax = np.deg2rad(dAngleMax)
+
+while True:
+    exploring = 0
+    # dwell at Vmpp while measuring current
+    tic = time.time()
+    toc =  time.time() - tic
+    while toc < args.t_dwell:
+        [v, i, tx, status] = sm.query_ascii_values('READ?')
+        t_run = tx-t0
+        print('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t_run,v,i), flush=True)
+        if t_run > args.t_total:
+            weAreDone(sm)
+        toc = time.time() - tic
+        
+    # setup complete. the real mppTracker begins here
+    exploring = 1
+    i_explore = [i]
+    v_explore = [v]
     
-exploring = 1
+    dAngle = 0
+    angleMpp = numpy.tan(i/v)
+    v_set = Vmpp
+    switched = False
+    while dAngle < dAngleMax:
+        v_set = v_set + dV
+        sm.write(':source:voltage {0:0.4f}'.format(v_set))
+        [v, i, tx, status] = sm.query_ascii_values('READ?')
+        t_run = tx-t0
+        print('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t_run,v,i), flush=True)
+        if t_run > args.t_total:
+            weAreDone(sm)
+        i_explore.append(i)
+        v_explore.append(v)
+        dAngle = numpy.tan(i/v) - angleMpp
+        if (dAngle < -dAngleMax) and not switched:
+            switched = True
+            dV = dV * -1 # switch our voltage walking direction (only once)
+    
+    # find the powers for the values we just explored
+    p_explore = v_explore*i_explore*-1
+    maxIndex = numpy.argmax(p_explore)
+    Vmpp = v_explore[maxIndex]
+    
+    # now let's walk back to our new Vmpp
+    dV = dV * -1
+    while v_set < Vmpp:
+        v_set = v_set + dV
+        sm.write(':source:voltage {0:0.4f}'.format(v_set))
+        [v, i, tx, status] = sm.query_ascii_values('READ?')
+        t_run = tx-t0
+        print('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t_run,v,i), flush=True)
+        if t_run > args.t_total:
+            weAreDone(sm)
+    sm.write(':source:voltage {0:0.4f}'.format(Vmpp))
 
-# setup complete. the real mppTracker begins here
-
-sm.write('*RST')
-sm.close()
-sys.exit(0) # TODO: check all the status values and immediately exit -3 if something is not right
+def weAreDone(sm):
+    sm.write('*RST')
+    sm.close()
+    sys.exit(0) # TODO: should check all the status values and immediately exit -3 if something is not right
