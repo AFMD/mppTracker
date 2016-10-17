@@ -1,6 +1,27 @@
 # mppTracker
 python max power point tracker for solar cells (hopefully robust enough for perovskites)
 
+
+## Installation
+#### Windows and MacOS
+1. Install Anaconda [from here](https://www.continuum.io/downloads) (Choose the largest python version number)
+1. Run the "Anaconda Prompt" program that was installed in step #1 and type the following in:
+
+  ```bash
+conda update --all
+conda install git
+conda install -c conda-forge pyvisa
+git clone https://github.com/AFMD/mppTracker
+cd mppTracker
+# now see Usage section below
+```  
+
+#### Ubuntu
+  TODO  
+
+#### Arch Linux
+  TODO  
+
 ## Usage
 ```
 usage: mppTracker.py [-h] address t_dwell t_total
