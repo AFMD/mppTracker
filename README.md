@@ -9,8 +9,8 @@ python max power point tracker for solar cells (hopefully robust enough for pero
 
   ```bash
 conda update --all
-conda install git
-conda install -c conda-forge pyvisa
+conda install git pyserial
+pip install pyvisa pyvisa-py
 git clone https://github.com/AFMD/mppTracker
 cd mppTracker
 # now see Usage section below
