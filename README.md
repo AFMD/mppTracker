@@ -39,7 +39,7 @@ positional arguments:
 optional arguments:
   -h, --help           show this help message and exit
   --dummy              Run in dummy mode (doesn't need sourcemeter, generates
-                       random data)
+                       simulated device data)
   --visa_lib VISA_LIB  Path to visa library in case pyvisa can't find it, try
                        C:\Windows\system32\visa64.dll
   --reverse_polarity   Swaps voltage polarity on output terminals.
