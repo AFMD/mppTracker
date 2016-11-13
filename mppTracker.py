@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser(description='Max power point tracker for solar 
 parser.add_argument("address", help="VISA resource name for sourcemeter")
 parser.add_argument("t_dwell", type=int, help="Total number of seconds for the dwell phase(s)")
 parser.add_argument("t_total", type=int, help="Total number of seconds to run for")
-parser.add_argument('--dummy', default=False, action='store_true', help="Run in dummy mode (doesn't need sourcemeter, generates random data)")
+parser.add_argument('--dummy', default=False, action='store_true', help="Run in dummy mode (doesn't need sourcemeter, generates simulated device data)")
 parser.add_argument('--visa_lib', type=str, help="Path to visa library in case pyvisa can't find it, try C:\\Windows\\system32\\visa64.dll")
 parser.add_argument('--reverse_polarity', default=False, action='store_true', help="Swaps voltage polarity on output terminals.")
 
