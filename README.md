@@ -24,18 +24,25 @@ cd mppTracker
 
 ## Usage
 ```
-usage: mppTracker.py [-h] address t_dwell t_total
+usage: mppTracker.py [-h] [--dummy] [--visa_lib VISA_LIB] [--reverse_polarity]
+                     address t_dwell t_total
 
-Max power point tracker for solar cells using a Keityhley 2400 sourcemeter
-(hopefully robust enough for perovskites)
+Max power point tracker for solar cells using a Keithley 2400 sourcemeter
+(hopefully robust enough for perovskites). Data is written to stdout and human
+readable messages are written to stderr.
 
 positional arguments:
-  address     VISA resource name for sourcemeter
-  t_dwell     Total number of seconds for the dwell phase(s)
-  t_total     Total number of seconds to run for
+  address              VISA resource name for sourcemeter
+  t_dwell              Total number of seconds for the dwell phase(s)
+  t_total              Total number of seconds to run for
 
 optional arguments:
-  -h, --help  show this help message and exit
+  -h, --help           show this help message and exit
+  --dummy              Run in dummy mode (doesn't need sourcemeter, generates
+                       random data)
+  --visa_lib VISA_LIB  Path to visa library in case pyvisa can't find it, try
+                       C:\Windows\system32\visa64.dll
+  --reverse_polarity   Swaps voltage polarity on output terminals.
 ```
 
 ## Requirements
