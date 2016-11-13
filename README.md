@@ -1,7 +1,5 @@
 # mppTracker
-python max power point tracker for solar cells (hopefully robust enough for perovskites)
-This program streams csv formatted data to stdout allowing the max power point tracking to be monitored in real time.
-
+python max power point tracker for solar cells (hopefully robust enough for perovskites)  
 
 ## Installation
 #### Windows and MacOS
@@ -45,6 +43,14 @@ optional arguments:
                        C:\Windows\system32\visa64.dll
   --reverse_polarity   Swaps voltage polarity on output terminals.
 ```
+
+## Output format
+This program streams csv formatted data to stdout allowing the max power point tracking algorithm to be monitored in real time. The data has four columns:
+
+1. 1 if the program is in "exploration mode" (i.e. looking for a new max power point) or 0 if the program is in "dwell mode" (monitoring current at a previously found Vmpp).
+1. timestamp in seconds since the routine started.  
+1. the measured device voltage [V]
+1. the measured device current [A]
 
 ## Requirements
 * pyvisa (tested with version 1.8)
