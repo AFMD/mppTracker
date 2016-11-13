@@ -1,5 +1,6 @@
 # mppTracker
 python max power point tracker for solar cells (hopefully robust enough for perovskites)
+This program streams csv formatted data to stdout allowing the max power point tracking to be monitored in real time.
 
 
 ## Installation
