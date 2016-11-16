@@ -23,7 +23,9 @@ cd mppTracker
 
 ## Usage
 ```
+$ ./mppTracker.py -h
 usage: mppTracker.py [-h] [--dummy] [--visa_lib VISA_LIB] [--reverse_polarity]
+                     [--file FILE]
                      address t_dwell t_total
 
 Max power point tracker for solar cells using a Keithley 2400 sourcemeter
@@ -42,6 +44,8 @@ optional arguments:
   --visa_lib VISA_LIB  Path to visa library in case pyvisa can't find it, try
                        C:\Windows\system32\visa64.dll
   --reverse_polarity   Swaps voltage polarity on output terminals.
+  --file FILE          Write output data stream to this file in addition to
+                       stdout.
 ```
 
 ## Output format
