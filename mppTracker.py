@@ -298,6 +298,7 @@ def weAreDone(sm):
         f.close()
     sm.write('*RST')
     sm.close()
+    myPrint("Finished with no errors.", file=sys.stderr, flush=True)
     sys.exit(0) # TODO: should check all the status values and immediately exit -3 if something is not right
 
 # setup complete. the real mppTracker begins here
