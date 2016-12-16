@@ -25,8 +25,8 @@ cd mppTracker
 ```
 $ ./mppTracker.py -h
 usage: mppTracker.py [-h] [--dummy] [--visa_lib VISA_LIB] [--reverse_polarity]
-                     [--file FILE]
-                     address t_dwell t_total
+                     [--file FILE] [--scan]
+                     [address] [t_dwell] [t_total]
 
 Max power point tracker for solar cells using a Keithley 2400 sourcemeter
 (hopefully robust enough for perovskites). Data is written to stdout and human
@@ -46,6 +46,8 @@ optional arguments:
   --reverse_polarity   Swaps voltage polarity on output terminals.
   --file FILE          Write output data stream to this file in addition to
                        stdout.
+  --scan               Scan for obvious VISA resource names, print them and
+                       exit
 ```
 
 ## Output format
