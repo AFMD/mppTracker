@@ -4,6 +4,8 @@
 # written by grey@christoforo.net
 
 import visa # for talking to sourcemeter
+import pyvisa
+import serial
 import sys
 import argparse
 import time
@@ -12,17 +14,41 @@ import mpmath
 from scipy import special
 parser = argparse.ArgumentParser(description='Max power point tracker for solar cells using a Keithley 2400 sourcemeter (hopefully robust enough for perovskites). Data is written to stdout and human readable messages are written to stderr.')
 
-parser.add_argument("address", help="VISA resource name for sourcemeter")
-parser.add_argument("t_dwell", type=int, help="Total number of seconds for the dwell phase(s)")
-parser.add_argument("t_total", type=int, help="Total number of seconds to run for")
+parser.add_argument("address", nargs='?', default=None, type=str, help="VISA resource name for sourcemeter")
+parser.add_argument("t_dwell", nargs='?', default=None,  type=int, help="Total number of seconds for the dwell phase(s)")
+parser.add_argument("t_total", nargs='?', default=None,  type=int, help="Total number of seconds to run for")
 parser.add_argument('--dummy', default=False, action='store_true', help="Run in dummy mode (doesn't need sourcemeter, generates simulated device data)")
 parser.add_argument('--visa_lib', type=str, help="Path to visa library in case pyvisa can't find it, try C:\\Windows\\system32\\visa64.dll")
 parser.add_argument('--reverse_polarity', default=False, action='store_true', help="Swaps voltage polarity on output terminals.")
 parser.add_argument('--file', type=str, help="Write output data stream to this file in addition to stdout.")
+parser.add_argument("--scan", default=False, action='store_true', help="Scan for obvious VISA resource names, print them and exit")
 
 args = parser.parse_args()
 
 dataDestinations = [sys.stdout]
+
+if args.scan:
+    try:
+        rm = visa.ResourceManager('@py')
+        pyvisaList = rm.list_resources()
+        print ("===pyvisa-py===")
+        print (pyvisaList)
+    except:
+        pass
+    try:
+        if args.visa_lib is not None:
+            rm = visa.ResourceManager(args.visa_lib)
+        else:
+            rm = visa.ResourceManager()
+        niList = rm.list_resources()
+        print ('==='+str(rm.visalib)+'===')
+        print (niList)
+    except:
+        pass
+    sys.exit(0)
+else: # not scanning
+    if (args.address is None) or (args.address is None) or (args.address is None):
+        parser.error("the following arguments are required: address, t_dwell, t_total (unless you use --scan)")
 
 if args.file is not None:
     f = open(args.file, 'w')
@@ -294,10 +320,10 @@ sm.write(':source:voltage {0:0.4f}'.format(Vmpp))
 myPrint("Mpp reached.", file=sys.stderr, flush=True)
 
 def weAreDone(sm):
-    if args.file is not None:
-        f.close()
     sm.write('*RST')
     sm.close()
+    if args.file is not None:
+        f.close()    
     myPrint("Finished with no errors.", file=sys.stderr, flush=True)
     sys.exit(0) # TODO: should check all the status values and immediately exit -3 if something is not right
 
