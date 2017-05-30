@@ -22,6 +22,7 @@ parser.add_argument('--visa_lib', type=str, help="Path to visa library in case p
 parser.add_argument('--reverse_polarity', default=False, action='store_true', help="Swaps voltage polarity on output terminals.")
 parser.add_argument('--file', type=str, help="Write output data stream to this file in addition to stdout.")
 parser.add_argument("--scan", default=False, action='store_true', help="Scan for obvious VISA resource names, print them and exit")
+parser.add_argument("--rear", default=False, action='store_true', help="Use the rear terminals")
 
 args = parser.parse_args()
 
@@ -206,6 +207,8 @@ else: # dummy mode
     #sm.query_ascii_values = dummy.query_ascii_values
     #sm.close = doNothing
 
+# sm is now set up (either in dummy or real hardware mode)
+
 if args.t_total == 0:
     timeString = "forever"
 else:
@@ -227,6 +230,10 @@ sm.write(':sense:function:concurrent on')
 sm.write(':sense:function "current:dc", "voltage:dc"')
 
 sm.write(':format:elements time,voltage,current,status')
+
+# use rear terminals?
+if args.rear:
+    sm.write(':rout:term rear')
 
 # let's find our open circuit voltage
 sm.write(':source:function current')
