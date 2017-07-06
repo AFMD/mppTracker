@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser(description='Max power point tracker for solar 
 parser.add_argument("address", nargs='?', default=None, type=str, help="VISA resource name for sourcemeter")
 parser.add_argument("t_dwell", nargs='?', default=None,  type=int, help="Total number of seconds for the dwell phase(s)")
 parser.add_argument("t_total", nargs='?', default=None,  type=int, help="Total number of seconds to run for")
+parser.add_argument("max_current", nargs='?', default=None,  type=float, help="Maximum current limit (amperes)")
 parser.add_argument('--dummy', default=False, action='store_true', help="Run in dummy mode (doesn't need sourcemeter, generates simulated device data)")
 parser.add_argument('--visa_lib', type=str, help="Path to visa library in case pyvisa can't find it, try C:\\Windows\\system32\\visa64.dll")
 parser.add_argument('--reverse_polarity', default=False, action='store_true', help="Swaps voltage polarity on output terminals.")
@@ -263,7 +264,10 @@ myPrint('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,0,Voc,Ioc*polarity), flush
 ##NOTE: what if Isc degrades the device? maybe I should only sweep backwards
 ##until the power output starts dropping instead of going all the way to zero volts...
 sweepParams = {} # here we'll store the parameters that define our sweep
-sweepParams['maxCurrent'] = 0.0001 # amps
+if args.max_current is None:
+    sweepParams['maxCurrent'] = 0.0001 # amps
+else:
+    sweepParams['maxCurrent'] = args.max_current
 sweepParams['sweepStart'] = Voc # volts
 sweepParams['sweepEnd'] = 0 # volts
 sweepParams['nPoints'] = 1001

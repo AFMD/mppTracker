@@ -26,7 +26,7 @@ cd mppTracker
 $ ./mppTracker.py -h
 usage: mppTracker.py [-h] [--dummy] [--visa_lib VISA_LIB] [--reverse_polarity]
                      [--file FILE] [--scan]
-                     [address] [t_dwell] [t_total]
+                     [address] [t_dwell] [t_total] [max_current]
 
 Max power point tracker for solar cells using a Keithley 2400 sourcemeter
 (hopefully robust enough for perovskites). Data is written to stdout and human
@@ -36,6 +36,7 @@ positional arguments:
   address              VISA resource name for sourcemeter
   t_dwell              Total number of seconds for the dwell phase(s)
   t_total              Total number of seconds to run for
+  max_current          Maximum current limit (amperes)
 
 optional arguments:
   -h, --help           show this help message and exit
