@@ -361,7 +361,7 @@ while True:
     v_explore = numpy.array(v)
     
     dAngle = 0
-    angleMpp = numpy.rad2deg(numpy.tan(i/v*Voc/Isc))
+    angleMpp = numpy.rad2deg(numpy.arctan(i/v*Voc/Isc))
     v_set = Vmpp
     switched = False
     myPrint("Walking up in voltage...", file=sys.stderr, flush=True)
@@ -376,7 +376,7 @@ while True:
             weAreDone(sm)
         i_explore = numpy.append(i_explore, i)
         v_explore = numpy.append(v_explore, v)
-        dAngle = numpy.rad2deg(numpy.tan(i/v*Voc/Isc)) - angleMpp
+        dAngle = numpy.rad2deg(numpy.arctan(i/v*Voc/Isc)) - angleMpp
         if (dAngle < -dAngleMax) and not switched:
             myPrint("Upper exploration voltage limit reached.", file=sys.stderr, flush=True)
             myPrint("Walking down in voltage...", file=sys.stderr, flush=True)
