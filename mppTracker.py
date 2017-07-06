@@ -63,7 +63,7 @@ def myPrint(*args,**kwargs):
             print(*args,**kwargs)
 
 if not args.dummy:
-    timeoutMS = 10000
+    timeoutMS = 50000
     openParams = {'resource_name': args.address, 'timeout': timeoutMS, '_read_termination': u'\n'}
     
     myPrint("Connecting to", openParams['resource_name'], "...", file=sys.stderr, flush=True)
@@ -283,8 +283,8 @@ sm.write(':source:voltage:range {0:.4f}'.format(sweepParams['sweepStart']))
 sm.write(':source:sweep:ranging best')
 sm.write(':sense:current:protection {0:.3f}'.format(sweepParams['maxCurrent']))
 sm.write(':sense:current:range {0:.3f}'.format(sweepParams['maxCurrent']))
-sm.write(':sense:voltage:nplcycles 0.1')
-sm.write(':sense:current:nplcycles 0.1')
+sm.write(':sense:voltage:nplcycles 0.5')
+sm.write(':sense:current:nplcycles 0.5')
 sm.write(':display:digits 5')
 
 sm.write(':source:voltage {0:0.4f}'.format(sweepParams['sweepStart']))
