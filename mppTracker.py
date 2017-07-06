@@ -48,7 +48,7 @@ if args.scan:
         pass
     sys.exit(0)
 else: # not scanning
-    if (args.address is None) or (args.address is None) or (args.address is None):
+    if (args.address is None) or (args.t_dwell is None) or (args.t_total is None):
         parser.error("the following arguments are required: address, t_dwell, t_total (unless you use --scan)")
 
 if args.file is not None:
