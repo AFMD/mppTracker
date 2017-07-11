@@ -263,7 +263,7 @@ myPrint('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,0,Voc,Ioc*polarity), flush
 ##NOTE: what if Isc degrades the device? maybe I should only sweep backwards
 ##until the power output starts dropping instead of going all the way to zero volts...
 sweepParams = {} # here we'll store the parameters that define our sweep
-sweepParams['maxCurrent'] = 0.0001 # amps
+sweepParams['maxCurrent'] = 0.01 # amps
 sweepParams['sweepStart'] = Voc # volts
 sweepParams['sweepEnd'] = 0 # volts
 sweepParams['nPoints'] = 1001
@@ -281,8 +281,8 @@ dV = abs(sm.query_ascii_values(':source:voltage:step?')[0])
 
 sm.write(':source:voltage:range {0:.4f}'.format(sweepParams['sweepStart']))
 sm.write(':source:sweep:ranging best')
-sm.write(':sense:current:protection {0:.3f}'.format(sweepParams['maxCurrent']))
-sm.write(':sense:current:range {0:.3f}'.format(sweepParams['maxCurrent']))
+sm.write(':sense:current:protection {0:.6f}'.format(sweepParams['maxCurrent']))
+sm.write(':sense:current:range {0:.6f}'.format(sweepParams['maxCurrent']))
 sm.write(':sense:voltage:nplcycles 0.5')
 sm.write(':sense:current:nplcycles 0.5')
 sm.write(':display:digits 5')
@@ -361,7 +361,7 @@ while True:
     v_explore = numpy.array(v)
     
     dAngle = 0
-    angleMpp = numpy.rad2deg(numpy.tan(i/v*Voc/Isc))
+    angleMpp = numpy.rad2deg(numpy.arctan(i/v*Voc/Isc))
     v_set = Vmpp
     switched = False
     myPrint("Walking up in voltage...", file=sys.stderr, flush=True)
@@ -376,7 +376,7 @@ while True:
             weAreDone(sm)
         i_explore = numpy.append(i_explore, i)
         v_explore = numpy.append(v_explore, v)
-        dAngle = numpy.rad2deg(numpy.tan(i/v*Voc/Isc)) - angleMpp
+        dAngle = numpy.rad2deg(numpy.arctan(i/v*Voc/Isc)) - angleMpp
         if (dAngle < -dAngleMax) and not switched:
             myPrint("Upper exploration voltage limit reached.", file=sys.stderr, flush=True)
             myPrint("Walking down in voltage...", file=sys.stderr, flush=True)
