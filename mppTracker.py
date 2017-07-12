@@ -19,7 +19,6 @@ parser.add_argument("t_dwell", nargs='?', default=None,  type=int, help="Total n
 parser.add_argument("t_total", nargs='?', default=None,  type=int, help="Total number of seconds to run for")
 parser.add_argument('--dummy', default=False, action='store_true', help="Run in dummy mode (doesn't need sourcemeter, generates simulated device data)")
 parser.add_argument('--visa_lib', type=str, help="Path to visa library in case pyvisa can't find it, try C:\\Windows\\system32\\visa64.dll")
-parser.add_argument('--reverse_polarity', default=False, action='store_true', help="Swaps voltage polarity on output terminals.")
 parser.add_argument('--file', type=str, help="Write output data stream to this file in addition to stdout.")
 parser.add_argument("--scan", default=False, action='store_true', help="Scan for obvious VISA resource names, print them and exit")
 parser.add_argument("--rear", default=False, action='store_true', help="Use the rear terminals")
@@ -61,6 +60,14 @@ def myPrint(*args,**kwargs):
         for dest in dataDestinations:
             kwargs['file'] = dest
             print(*args,**kwargs)
+            
+def weAreDone(sm):
+    sm.write('*RST')
+    sm.close()
+    if args.file is not None:
+        f.close()    
+    myPrint("Finished with no errors.", file=sys.stderr, flush=True)
+    sys.exit(0) # TODO: should check all the status values and immediately exit -3 if something is not right
 
 if not args.dummy:
     timeoutMS = 50000
@@ -215,12 +222,6 @@ else:
     timeString = "for " + str(args.t_total) + " seconds"
 myPrint("mppTracking",timeString, "with", str(args.t_dwell), "second dwell intervals.", file=sys.stderr, flush=True)
 
-# connection polarity
-if args.reverse_polarity:
-    polarity = -1
-else:
-    polarity = 1
-
 sm.write('*RST')
 sm.write(':trace:clear')
 sm.write(':output:smode himpedance')
@@ -257,7 +258,13 @@ myPrint("Measuring Voc:", file=sys.stderr, flush=True)
 myPrint(Voc, file=sys.stderr, flush=True)
 sm.write(':output off')
 myPrint('#exploring,time,voltage,current', file=sys.stderr, flush=True)
-myPrint('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,0,Voc,Ioc*polarity), flush=True)
+myPrint('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,0,Voc*polarity,Ioc*polarity), flush=True)
+
+# derive connection polarity from Voc
+if Voc < 0:
+    polarity = -1
+else:
+    polarity = 1
 
 # for initial sweep
 ##NOTE: what if Isc degrades the device? maybe I should only sweep backwards
@@ -277,7 +284,7 @@ sm.write(':trigger:count {0:d}'.format(int(sweepParams['nPoints'])))
 sm.write(':source:sweep:points {0:d}'.format(int(sweepParams['nPoints'])))
 sm.write(':source:voltage:start {0:.4f}'.format(sweepParams['sweepStart']))
 sm.write(':source:voltage:stop {0:.4f}'.format(sweepParams['sweepEnd']))
-dV = abs(sm.query_ascii_values(':source:voltage:step?')[0])
+dV = sm.query_ascii_values(':source:voltage:step?')[0]
 
 sm.write(':source:voltage:range {0:.4f}'.format(sweepParams['sweepStart']))
 sm.write(':source:sweep:ranging best')
@@ -296,43 +303,37 @@ myPrint("Exploratory sweep done!", file=sys.stderr, flush=True)
 #sm.write(':output off')
 
 sweepValues = numpy.reshape(sweepValues, (-1,4))
-
-for x in range(len(sweepValues)):
-    v = sweepValues[x,0]
-    i = sweepValues[x,1] * polarity
-    t = sweepValues[x,2] - t0
-    myPrint('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t,v,i), flush=True)
 v = sweepValues[:,0]
-i = sweepValues[:,1] * polarity
-Isc = i[-1]
+i = sweepValues[:,1]
+t = sweepValues[:,2] - t0
 p = v*i
+Isc = i[-1]
+# derive new current limit from short circuit current
+sm.write(':sense:current:range {0:.6f}'.format(Isc*1.2))
+
+# display initial sweep result
+for x in range(len(sweepValues)):
+    myPrint('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t[x],v[x]*polarity,i[x]*polarity), flush=True)
+
 maxIndex = numpy.argmax(p)
 Vmpp = v[maxIndex]
 myPrint("Initial Mpp found:", file=sys.stderr, flush=True)
-myPrint(p[maxIndex]*1000,"mW @",Vmpp,"V", file=sys.stderr, flush=True)
+myPrint(p[maxIndex]*1000,"mW @",Vmpp*polarity,"V", file=sys.stderr, flush=True)
 myPrint("Walking back to Mpp...", file=sys.stderr, flush=True)
 
-v_set = 0
+v_set = 0 # we just finished an IV sweep so our voltage is now 0
+# let's walk back to Vmpp
 sm.write(':source:voltage:mode fixed')
 sm.write(':trigger:count 1')
-while v_set < Vmpp:
+while abs(v_set) < abs(Vmpp):
         sm.write(':source:voltage {0:0.4f}'.format(v_set))
         [v, i, tx, status] = sm.query_ascii_values('READ?')
-        i = i*polarity
         t_run = tx-t0
-        myPrint('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t_run,v,i), flush=True)
-        v_set = v_set + dV
+        myPrint('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t_run,v*polarity,i*polarity), flush=True)
+        v_set = v_set - dV
 
 sm.write(':source:voltage {0:0.4f}'.format(Vmpp))
 myPrint("Mpp reached.", file=sys.stderr, flush=True)
-
-def weAreDone(sm):
-    sm.write('*RST')
-    sm.close()
-    if args.file is not None:
-        f.close()    
-    myPrint("Finished with no errors.", file=sys.stderr, flush=True)
-    sys.exit(0) # TODO: should check all the status values and immediately exit -3 if something is not right
 
 # setup complete. the real mppTracker begins here
 
@@ -348,9 +349,8 @@ while True:
     myPrint("", file=sys.stderr, flush=True)
     while toc < args.t_dwell:
         [v, i, tx, status] = sm.query_ascii_values('READ?')
-        i = i*polarity
         t_run = tx-t0
-        myPrint('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t_run,v,i), flush=True)
+        myPrint('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t_run,v*polarity,i*polarity), flush=True)
         if t_run > args.t_total:
             weAreDone(sm)
         toc = time.time() - tic
@@ -369,9 +369,8 @@ while True:
         v_set = v_set + dV
         sm.write(':source:voltage {0:0.4f}'.format(v_set))
         [v, i, tx, status] = sm.query_ascii_values('READ?')
-        i = i*polarity
         t_run = tx-t0
-        myPrint('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t_run,v,i), flush=True)
+        myPrint('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t_run,v*polarity,i*polarity), flush=True)
         if t_run > args.t_total:
             weAreDone(sm)
         i_explore = numpy.append(i_explore, i)
@@ -391,18 +390,17 @@ while True:
     Vmpp = v_explore[maxIndex]
     
     myPrint("New Mpp found:", file=sys.stderr, flush=True)
-    myPrint(p_explore[maxIndex]*1000,"mW @",Vmpp,"V", file=sys.stderr, flush=True)    
+    myPrint(p_explore[maxIndex]*1000,"mW @",Vmpp*polarity,"V", file=sys.stderr, flush=True)    
     
     # now let's walk back to our new Vmpp
     dV = dV * -1
     v_set = v_set + dV
     myPrint("Walking back to Mpp...", file=sys.stderr, flush=True)
-    while v_set < Vmpp:
+    while abs(v_set) < abs(Vmpp):
         sm.write(':source:voltage {0:0.4f}'.format(v_set))
         [v, i, tx, status] = sm.query_ascii_values('READ?')
-        i = i*polarity
         t_run = tx-t0
-        myPrint('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t_run,v,i), flush=True)
+        myPrint('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t_run,v*polarity,i*polarity), flush=True)
         if t_run > args.t_total:
             weAreDone(sm)
         v_set = v_set + dV
