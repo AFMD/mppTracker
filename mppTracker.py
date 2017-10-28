@@ -11,7 +11,6 @@ import argparse
 import time
 import numpy
 import mpmath
-from scipy import special
 parser = argparse.ArgumentParser(description='Max power point tracker for solar cells using a Keithley 2400 sourcemeter (hopefully robust enough for perovskites). Data is written to stdout and human readable messages are written to stderr.')
 
 parser.add_argument("address", nargs='?', default=None, type=str, help="VISA resource name for sourcemeter")
