@@ -35,7 +35,7 @@ readable messages are written to stderr.
 positional arguments:
   address              VISA resource name for sourcemeter
   t_dwell              Total number of seconds for the dwell phase(s)
-  t_total              Total number of seconds to run for
+  t_total              Total number of seconds to run for, if 0 run forever
 
 optional arguments:
   -h, --help           show this help message and exit

@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(description='Max power point tracker for solar 
 
 parser.add_argument("address", nargs='?', default=None, type=str, help="VISA resource name for sourcemeter")
 parser.add_argument("t_dwell", nargs='?', default=None,  type=int, help="Total number of seconds for the dwell phase(s)")
-parser.add_argument("t_total", nargs='?', default=None,  type=int, help="Total number of seconds to run for")
+parser.add_argument("t_total", nargs='?', default=None,  type=int, help="Total number of seconds to run for, if 0 run forever")
 parser.add_argument('--dummy', default=False, action='store_true', help="Run in dummy mode (doesn't need sourcemeter, generates simulated device data)")
 parser.add_argument('--visa_lib', type=str, help="Path to visa library in case pyvisa can't find it, try C:\\Windows\\system32\\visa64.dll")
 parser.add_argument('--reverse_polarity', default=False, action='store_true', help="Swaps voltage polarity on output terminals.")
@@ -351,7 +351,7 @@ while True:
         i = i*polarity
         t_run = tx-t0
         myPrint('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t_run,v,i), flush=True)
-        if t_run > args.t_total:
+        if t_run > args.t_total and args.t_total != 0:
             weAreDone(sm)
         toc = time.time() - tic
     
@@ -372,7 +372,7 @@ while True:
         i = i*polarity
         t_run = tx-t0
         myPrint('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t_run,v,i), flush=True)
-        if t_run > args.t_total:
+        if t_run > args.t_total and args.t_total != 0:
             weAreDone(sm)
         i_explore = numpy.append(i_explore, i)
         v_explore = numpy.append(v_explore, v)
@@ -403,7 +403,7 @@ while True:
         i = i*polarity
         t_run = tx-t0
         myPrint('{:1d},{:.4e},{:.4e},{:.4e}'.format(exploring,t_run,v,i), flush=True)
-        if t_run > args.t_total:
+        if t_run > args.t_total and args.t_total != 0:
             weAreDone(sm)
         v_set = v_set + dV
     sm.write(':source:voltage {0:0.4f}'.format(Vmpp))
