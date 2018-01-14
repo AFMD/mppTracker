@@ -67,6 +67,6 @@ This program streams csv formatted data to stdout allowing the max power point t
 python mppTracker.py GPIB0::24::INSTR 10 120 # GPIB attached sourcemeter
 python mppTracker.py TCPIP::192.168.1.54::INSTR 10 120 # ethernet attached sourcemeter
 python mppTracker.py USB0::0x1AB1::0x0588::DS1K00005888::INSTR 10 120 # USB attached sourcemeter
-python mppTracker.py ASRL::COM3::INSTR 10 120 # rs232 attached 10 sourcemeter
-python mppTracker.py ASRL::/dev/ttyUSB0::INSTR 10 120 # rs232 attached sourcemeter
+python mppTracker.py ASRL3::INSTR 10 120 # rs232 attached 10 sourcemeter on com3
+python mppTracker.py ASRL/dev/ttyUSB0::INSTR 10 120 # rs232 attached sourcemeter
 ```
